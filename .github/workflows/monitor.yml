@@ -1,0 +1,45 @@
+# For the NEW repo (e.g. dune-70mm-watch).
+# Paste this as the contents of: .github/workflows/monitor.yml
+
+name: dune-70mm-watch
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: showtime-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Watch Dune Part Three (IMAX 70mm)
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          ALERT_LABEL: "Dune 3 IMAX 70mm - Lincoln Sq"
+          MOVIE_PATTERN: dune
+          SCAN_START: "2026-12-10"   # watch the Dec 10 - Jan 19 window
+          DAYS_AHEAD: "40"
+        run: python monitor.py
+
+      - name: Persist state
+        if: always()
+        run: |
+          git config user.name "showtime-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || (git commit -m "chore: update seen showtimes [skip ci]" && git push)
