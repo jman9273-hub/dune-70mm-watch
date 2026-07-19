@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "last_run": "2026-07-19T20:51:15+00:00"
+  },
+  "seen": {
+    "142050311": {
+      "day": "2026-12-18",
+      "first_seen": "2026-07-19T20:51:15+00:00",
+      "fmt": "IMAX 70MM",
+      "last_seen": "2026-07-19T20:51:15+00:00",
+      "movie": "Dune: Part Three",
+      "sid": "142050311",
+      "status": "almost full",
+      "time": "7:00 pm",
+      "url": "https://www.amctheatres.com/showtimes/142050311"
+    },
+    "142050312": {
+      "day": "2026-12-19",
+      "first_seen": "2026-07-19T20:51:15+00:00",
+      "fmt": "IMAX 70MM",
+      "last_seen": "2026-07-19T20:51:15+00:00",
+      "movie": "Dune: Part Three",
+      "sid": "142050312",
+      "status": "almost full",
+      "time": "7:00 pm",
+      "url": "https://www.amctheatres.com/showtimes/142050312"
+    },
+    "142050313": {
+      "day": "2026-12-20",
+      "first_seen": "2026-07-19T20:51:15+00:00",
+      "fmt": "IMAX 70MM",
+      "last_seen": "2026-07-19T20:51:15+00:00",
+      "movie": "Dune: Part Three",
+      "sid": "142050313",
+      "status": "almost full",
+      "time": "7:00 pm",
+      "url": "https://www.amctheatres.com/showtimes/142050313"
+    },
+    "142125588": {
+      "day": "2026-12-18",
+      "first_seen": "2026-07-19T20:51:15+00:00",
+      "fmt": "IMAX 70MM",
+      "last_seen": "2026-07-19T20:51:15+00:00",
+      "movie": "Dune: Part Three",
+      "sid": "142125588",
+      "status": "almost full",
+      "time": "11:00 pm",
+      "url": "https://www.amctheatres.com/showtimes/142125588"
+    },
+    "142125589": {
+      "day": "2026-12-19",
+      "first_seen": "2026-07-19T20:51:15+00:00",
+      "fmt": "IMAX 70MM",
+      "last_seen": "2026-07-19T20:51:15+00:00",
+      "movie": "Dune: Part Three",
+      "sid": "142125589",
+      "status": "almost full",
+      "time": "11:00 pm",
+      "url": "https://www.amctheatres.com/showtimes/142125589"
+    },
+    "142125590": {
+      "day": "2026-12-20",
+      "first_seen": "2026-07-19T20:51:15+00:00",
+      "fmt": "IMAX 70MM",
+      "last_seen": "2026-07-19T20:51:15+00:00",
+      "movie": "Dune: Part Three",
+      "sid": "142125590",
+      "status": "almost full",
+      "time": "11:00 pm",
+      "url": "https://www.amctheatres.com/showtimes/142125590"
+    }
+  }
+}
