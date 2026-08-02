@@ -129,16 +129,28 @@ class Show:
 # Fetching
 # --------------------------------------------------------------------------
 
-def fetch(url: str) -> str:
-    """GET a page while presenting a real-browser TLS/HTTP fingerprint."""
-    r = cf.get(
-        url,
-        impersonate="chrome",
-        timeout=30,
-        headers={"Accept-Language": "en-US,en;q=0.9"},
-    )
-    r.raise_for_status()
-    return r.text
+def fetch(url: str, attempts: int = 3) -> str:
+    """GET a page with a real-browser fingerprint, retrying with growing
+    pauses if AMC's traffic protection rejects a request transiently."""
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            r = cf.get(
+                url,
+                impersonate="chrome",
+                timeout=30,
+                headers={"Accept-Language": "en-US,en;q=0.9"},
+            )
+            r.raise_for_status()
+            return r.text
+        except Exception as e:
+            last = e
+            if i < attempts - 1:
+                wait = (2 ** i) * 3 + random.uniform(0, 3)  # ~3-6s then ~6-9s
+                print(f"[warn] fetch {i+1}/{attempts} failed ({e}); retrying in {wait:.0f}s",
+                      file=sys.stderr)
+                time.sleep(wait)
+    raise last  # type: ignore[misc]
 
 
 def polite_sleep() -> None:
@@ -355,7 +367,12 @@ def scan(dump_dir: Path | None) -> list[Show]:
     start = today
     if cfg("SCAN_START"):
         start = max(date.fromisoformat(cfg("SCAN_START")), today)
-    base_html = fetch(base_url)
+    try:
+        base_html = fetch(base_url)
+    except Exception as e:
+        sys.exit(f"[error] Couldn't load the theatre page even with retries ({e}). "
+                 "AMC is likely rate-limiting this computer right now; "
+                 "the next scheduled run will try again automatically.")
     if dump_dir:
         (dump_dir / "base.html").write_text(base_html)
 
@@ -370,6 +387,7 @@ def scan(dump_dir: Path | None) -> list[Show]:
     print(f"[info] date url template: {template}")
 
     all_shows: list[Show] = []
+    fetch_failures = 0
     if start == today:  # the base page shows today's schedule
         all_shows = parse_showtimes(base_html, today.isoformat(), base_url)
     started = any(movie_re.search(s.movie) for s in all_shows)
@@ -382,9 +400,15 @@ def scan(dump_dir: Path | None) -> list[Show]:
             html = fetch(template.format(date=d))
         except Exception as e:
             print(f"[warn] fetch failed for {d}: {e}", file=sys.stderr)
+            fetch_failures += 1
+            if fetch_failures >= 3:
+                sys.exit("[error] 3 dates in a row failed even with retries -- "
+                         "AMC is likely rate-limiting this computer right now. "
+                         "The next scheduled run will try again automatically.")
             continue
         if dump_dir:
             (dump_dir / f"{d}.html").write_text(html)
+        fetch_failures = 0
         day_shows = parse_showtimes(html, d, base_url)
         all_shows.extend(day_shows)
 
