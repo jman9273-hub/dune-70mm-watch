@@ -1,11 +1,11 @@
-# For the NEW repo (e.g. dune-70mm-watch).
-# Paste this as the contents of: .github/workflows/monitor.yml
+# For the dune-70mm-watch repo.
+# Paste as the contents of: .github/workflows/monitor.yml
 
 name: dune-70mm-watch
 
 on:
   schedule:
-    - cron: "*/20 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -32,8 +32,10 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ALERT_LABEL: "Dune 3 IMAX 70mm - Lincoln Sq"
           MOVIE_PATTERN: dune
-          SCAN_START: "2026-12-10"   # watch the Dec 10 - Jan 19 window
+          SCAN_START: "2026-12-10"
           DAYS_AHEAD: "40"
+          DATE_URL_TEMPLATE: "https://www.amctheatres.com/movie-theatres/new-york-city/amc-lincoln-square-13/showtimes?date={date}"
+          REQUEST_DELAY: "2"
         run: python monitor.py
 
       - name: Persist state
