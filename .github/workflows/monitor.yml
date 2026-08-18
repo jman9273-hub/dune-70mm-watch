@@ -1,11 +1,16 @@
 # For the dune-70mm-watch repo.
 # Paste as the contents of: .github/workflows/monitor.yml
+#
+# Two watchers on one schedule:
+#   HOT  (every 15 min)  Dec 10 - Jan 13  -- opening + holidays, refill watch
+#   DEEP (every hour)    Jan 14 - Feb 28  -- catches later batches being posted
 
 name: dune-70mm-watch
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/20 * * * *"    # hot window
+    - cron: "1 * * * *"       # deep window (also runs the hot check)
   workflow_dispatch: {}
 
 permissions:
@@ -27,15 +32,31 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Watch Dune Part Three (IMAX 70mm)
+      - name: Dune 70mm - opening window (Dec 10 - Jan 13)
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ALERT_LABEL: "Dune 3 IMAX 70mm - Lincoln Sq"
           MOVIE_PATTERN: dune
           SCAN_START: "2026-12-10"
-          DAYS_AHEAD: "40"
+          DAYS_AHEAD: "34"
+          EMPTY_STREAK_STOP: "999"
           DATE_URL_TEMPLATE: "https://www.amctheatres.com/movie-theatres/new-york-city/amc-lincoln-square-13/showtimes?date={date}"
-          REQUEST_DELAY: "2"
+          REQUEST_DELAY: "1.5"
+          STATE_FILE: state.json
+        run: python monitor.py
+
+      - name: Dune 70mm - later dates (Jan 14 - Feb 28)
+        if: github.event.schedule == '7 * * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          ALERT_LABEL: "Dune 3 IMAX 70mm (Jan-Feb) - Lincoln Sq"
+          MOVIE_PATTERN: dune
+          SCAN_START: "2027-01-14"
+          DAYS_AHEAD: "45"
+          EMPTY_STREAK_STOP: "999"
+          DATE_URL_TEMPLATE: "https://www.amctheatres.com/movie-theatres/new-york-city/amc-lincoln-square-13/showtimes?date={date}"
+          REQUEST_DELAY: "1.5"
+          STATE_FILE: state_late.json
         run: python monitor.py
 
       - name: Persist state
@@ -43,5 +64,5 @@ jobs:
         run: |
           git config user.name "showtime-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add state.json
+          git add state.json state_late.json || true
           git diff --cached --quiet || (git commit -m "chore: update seen showtimes [skip ci]" && git push)
