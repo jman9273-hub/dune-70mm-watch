@@ -1,6 +1,6 @@
 {
   "meta": {
-    "last_run": "2026-08-18T23:19:55+00:00"
+    "last_run": "2026-08-18T23:44:56+00:00"
   },
   "seen": {
     "142050311": {
@@ -8,6 +8,7 @@
       "first_seen": "2026-07-19T20:56:16+00:00",
       "fmt": "IMAX 70MM",
       "last_seen": "2026-08-18T15:04:05+00:00",
+      "missing_scans": 1,
       "movie": "Dune: Part Three",
       "sid": "142050311",
       "status": "almost full",
@@ -19,6 +20,7 @@
       "first_seen": "2026-07-19T20:56:16+00:00",
       "fmt": "IMAX 70MM",
       "last_seen": "2026-08-18T15:04:05+00:00",
+      "missing_scans": 1,
       "movie": "Dune: Part Three",
       "sid": "142050312",
       "status": "almost full",
@@ -30,6 +32,7 @@
       "first_seen": "2026-07-19T20:56:16+00:00",
       "fmt": "IMAX 70MM",
       "last_seen": "2026-08-18T15:04:05+00:00",
+      "missing_scans": 1,
       "movie": "Dune: Part Three",
       "sid": "142050313",
       "status": "almost full",
@@ -41,6 +44,7 @@
       "first_seen": "2026-07-19T20:56:16+00:00",
       "fmt": "IMAX 70MM",
       "last_seen": "2026-08-17T21:50:16+00:00",
+      "missing_scans": 1,
       "movie": "Dune: Part Three",
       "sid": "142125588",
       "status": "almost full",
@@ -52,6 +56,7 @@
       "first_seen": "2026-07-19T20:56:16+00:00",
       "fmt": "IMAX 70MM",
       "last_seen": "2026-08-18T15:04:05+00:00",
+      "missing_scans": 1,
       "movie": "Dune: Part Three",
       "sid": "142125589",
       "status": "almost full",
@@ -63,6 +68,7 @@
       "first_seen": "2026-07-19T20:56:16+00:00",
       "fmt": "IMAX 70MM",
       "last_seen": "2026-08-18T15:04:05+00:00",
+      "missing_scans": 1,
       "movie": "Dune: Part Three",
       "sid": "142125590",
       "status": "almost full",
