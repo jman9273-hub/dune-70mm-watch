@@ -178,7 +178,27 @@ def parse_showtimes(html: str, day: str, base_url: str) -> list[Show]:
     movie: str | None = None
     fmt: str | None = None
 
-    for el in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "a"]):
+    for el in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "a",
+                            "li", "span", "button", "p", "div"]):
+        if el.name in ("li", "span", "button", "p", "div"):
+            # Sold-out showtimes are rendered as dead chips, not links, so the
+            # anchor branch never sees them. Capture them anyway (with a
+            # synthetic id) so we can tell when they come back on sale.
+            if not movie or not fmt or el.find("a"):
+                continue
+            text = el.get_text(" ", strip=True)
+            if len(text) > 60 or "sold out" not in text.lower():
+                continue
+            tm = TIME_RE.search(text)
+            if not tm:
+                continue
+            t = tm.group(0).lower()
+            shows.append(Show(
+                sid=f"so:{day}:{fmt}:{t}:{movie[:24]}",
+                movie=movie, fmt=fmt, day=day, time=t,
+                status="sold out", url=base_url,
+            ))
+            continue
         if el.name == "a":
             href = el.get("href") or ""
             if "/movies/" in href:
@@ -347,16 +367,25 @@ def notify(title: str, body: str, click_url: str | None = None) -> None:
 def format_new_shows(new: list[Show]) -> str:
     lines = []
     for s in sorted(new, key=lambda s: (s.day, s.time)):
-        lines.append(f"{s.pretty_day} · {s.time} — {s.fmt} ({s.movie})")
-        lines.append(f"  {s.url}")
+        tag = "  [SOLD OUT - refill watch on]" if s.status == "sold out" else ""
+        lines.append(f"{s.pretty_day} - {s.time} - {s.fmt}{tag}")
+        if s.status != "sold out":
+            lines.append(f"  {s.url}")
     return "\n".join(lines)
+
+
+def slot_key(day: str, fmt: str, time_: str) -> str:
+    """Identifies a screening by when/where rather than by AMC's showtime id,
+    so a sold-out chip and the bookable link that replaces it are recognised
+    as the same screening."""
+    return f"{day}|{fmt}|{time_}".lower()
 
 
 # --------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------
 
-def scan(dump_dir: Path | None) -> list[Show]:
+def scan(dump_dir: Path | None) -> tuple[list[Show], set[str]]:
     base_url = cfg("THEATRE_SHOWTIMES_URL").rstrip("/")
     movie_re = re.compile(cfg("MOVIE_PATTERN"), re.I)
     fmt_re = re.compile(cfg("FORMAT_PATTERN"), re.I)
@@ -387,9 +416,11 @@ def scan(dump_dir: Path | None) -> list[Show]:
     print(f"[info] date url template: {template}")
 
     all_shows: list[Show] = []
+    scanned_days: set[str] = set()   # days we actually retrieved this run
     fetch_failures = 0
     if start == today:  # the base page shows today's schedule
         all_shows = parse_showtimes(base_html, today.isoformat(), base_url)
+        scanned_days.add(today.isoformat())
     started = any(movie_re.search(s.movie) for s in all_shows)
     empty_streak = 0
     first = 1 if start == today else 0
@@ -409,6 +440,7 @@ def scan(dump_dir: Path | None) -> list[Show]:
         if dump_dir:
             (dump_dir / f"{d}.html").write_text(html)
         fetch_failures = 0
+        scanned_days.add(d)
         day_shows = parse_showtimes(html, d, base_url)
         all_shows.extend(day_shows)
 
@@ -425,8 +457,10 @@ def scan(dump_dir: Path | None) -> list[Show]:
 
     matched = [s for s in dedupe(all_shows)
                if movie_re.search(s.movie) and fmt_re.search(s.fmt)]
-    print(f"[info] scan complete: {len(matched)} matching showtimes currently listed")
-    return matched
+    live = sum(1 for s in matched if s.status != "sold out")
+    print(f"[info] scan complete: {len(matched)} matching showtimes listed "
+          f"({live} bookable, {len(matched) - live} sold out)")
+    return matched, scanned_days
 
 
 def main() -> None:
@@ -448,14 +482,45 @@ def main() -> None:
     state = load_state(state_path)
     first_run = not state["seen"]
 
-    current = scan(dump_dir)
+    current, scanned_days = scan(dump_dir)
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    new = [s for s in current if s.sid not in state["seen"]]
+    # Snapshot of what each screening looked like BEFORE this run.
+    prev = state["seen"]
+    prev_soldout_slots = {
+        slot_key(e.get("day", ""), e.get("fmt", ""), e.get("time", ""))
+        for e in prev.values() if e.get("status") == "sold out"
+    }
+    live_now = {s.sid for s in current if s.status != "sold out"}
+
+    # A screening that vanishes from the listing is usually sold out. Only
+    # count it as missing if we actually retrieved its date this run --
+    # otherwise a failed fetch would look like a sell-out and then a refill.
+    for sid, e in prev.items():
+        if sid not in live_now and e.get("day") in scanned_days:
+            e["missing_scans"] = e.get("missing_scans", 0) + 1
+
+    new: list[Show] = []
+    reopened: list[Show] = []
+    for s in current:
+        before = prev.get(s.sid)
+        if before is None:
+            # Never seen this id. If it fills a slot we were tracking as sold
+            # out, it's a refill rather than a newly released showtime.
+            if s.status != "sold out" and slot_key(s.day, s.fmt, s.time) in prev_soldout_slots:
+                reopened.append(s)
+            else:
+                new.append(s)
+        elif s.status != "sold out" and (
+            before.get("status") == "sold out" or before.get("missing_scans", 0) >= 2
+        ):
+            reopened.append(s)
+
     for s in current:
         entry = state["seen"].setdefault(s.sid, {"first_seen": now})
         entry.update(asdict(s))
         entry["last_seen"] = now
+        entry["missing_scans"] = 0
     state["meta"]["last_run"] = now
     save_state(state_path, state)
 
@@ -471,15 +536,29 @@ def main() -> None:
             print(msg)
         return
 
-    if new:
-        title = f"{len(new)} new showtime{'s' if len(new) > 1 else ''}: {cfg('ALERT_LABEL')}"
-        body = format_new_shows(new)
+    label = cfg("ALERT_LABEL")
+
+    if reopened:
+        n = len(reopened)
+        title = f"SEATS OPEN ({n}): {label}"
+        body = ("Seats have come back on sale - grab them fast:\n"
+                + format_new_shows(reopened))
         if not args.dry_run:
-            notify(title, body, new[0].url)
+            notify(title, body, reopened[0].url)
         else:
             print(f"[dry-run] would notify:\n--- {title} ---\n{body}")
-    else:
-        print("[info] no new showtimes")
+
+    if new:
+        bookable = [s for s in new if s.status != "sold out"]
+        title = f"{len(new)} new showtime{'s' if len(new) > 1 else ''}: {label}"
+        body = format_new_shows(new)
+        if not args.dry_run:
+            notify(title, body, bookable[0].url if bookable else cfg("THEATRE_SHOWTIMES_URL"))
+        else:
+            print(f"[dry-run] would notify:\n--- {title} ---\n{body}")
+
+    if not new and not reopened:
+        print("[info] no new showtimes, no refills")
 
 
 if __name__ == "__main__":
