@@ -321,6 +321,7 @@ def notify(title: str, body: str, click_url: str | None = None) -> None:
     # send fails. (Tags: clapper renders the emoji on the phone instead.)
     title = title.encode("ascii", "ignore").decode().strip()
     configured = False
+    sent = False
     topic = cfg("NTFY_TOPIC")
     if topic:
         configured = True
